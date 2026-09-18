@@ -162,3 +162,36 @@ h1.title{font-family:var(--read);font-size:32px;line-height:1.18;font-weight:500
 .hist-row b{font-weight:600;min-width:34px}
 .hist-row .when{color:var(--muted);margin-left:auto;font-size:12px}
 .linkish{background:none;border:0;color:var(--accent);cursor:pointer;padding:0;font-size:13px;text-decoration:underline}
+
+/* ---------- policy tables ---------- */
+.tw{overflow-x:auto;margin:0 0 16px;border:1px solid var(--rule);border-radius:8px;background:var(--surface)}
+.prose table{border-collapse:collapse;width:100%;font-family:var(--ui);font-size:13.5px;line-height:1.45}
+.prose thead th{background:var(--shade);text-align:left;font-weight:600;color:var(--ink);
+  padding:9px 12px;border-bottom:1px solid var(--rule);white-space:nowrap}
+.prose tbody td{padding:9px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+.prose tbody tr:last-child td{border-bottom:0}
+.prose tbody td:first-child{font-weight:500}
+.prose a{color:var(--accent);word-break:break-word}
+
+/* ---------- proposal form: kind switch, preview, tools ---------- */
+.seg{display:flex;gap:6px;background:var(--shade);padding:4px;border-radius:9px}
+.seg button{flex:1;border:0;background:none;padding:7px 10px;border-radius:6px;cursor:pointer;
+  font-size:12.5px;font-weight:500;color:var(--muted);font-family:inherit;line-height:1.3}
+.seg button.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.row2{display:grid;grid-template-columns:110px 1fr;gap:10px}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.tools .note{font-size:11.5px}
+.tools code{background:var(--shade);border-radius:3px;padding:1px 4px;font-size:11px}
+.pv{margin-top:12px;border:1px solid var(--rule);border-radius:9px;background:var(--paper);padding:14px 16px}
+.pv-h{font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--muted);margin-bottom:8px}
+.pv .prose{font-size:15px;max-width:none}
+.pv .prose h3{margin-top:14px}
+.diff.one{grid-template-columns:1fr}
+.field.muted{opacity:.5}
+.field.muted select{background:var(--shade);cursor:not-allowed}
+
+/* ---------- keeping work between tabs ---------- */
+.thread-top{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--rule)}
+.thread-top .note{margin-right:auto}
+.answer-actions{margin-top:8px}
+.submit-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}

@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { md, esc, when } from "@/lib/md";
+import { load, save } from "@/lib/persist";
 
 const SECTIONS = [
   { key: "core", label: "Core concepts" },
@@ -12,7 +13,7 @@ const SECTIONS = [
 const ZCLASS = { red: "zr", orange: "zo", yellow: "zy", green: "zg" };
 const HIGH = ["R-13", "R-14", "R-15", "R-02", "R-06"];
 
-export default function Curriculum() {
+export default function Curriculum({ canRestore = false }) {
   const router = useRouter();
   const [entries, setEntries] = useState(null);
   const [err, setErr] = useState("");
@@ -20,6 +21,7 @@ export default function Curriculum() {
   const [find, setFind] = useState("");
   const [history, setHistory] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [restoring, setRestoring] = useState(0);
 
   useEffect(() => {
     fetch("/api/entries")
@@ -28,12 +30,22 @@ export default function Curriculum() {
         if (d.error) setErr(d.error);
         setEntries(d.entries || []);
         if (d.entries?.length) {
+          // a link wins, then whatever was open last, then the first entry
           const hash = decodeURIComponent((location.hash || "").replace("#", ""));
-          setSel(d.entries.find((e) => e.id === hash)?.id || d.entries[0].id);
+          const last = load("open", "");
+          setSel(
+            d.entries.find((e) => e.id === hash)?.id ||
+            d.entries.find((e) => e.id === last)?.id ||
+            d.entries[0].id
+          );
+          setFind(load("find", ""));
         }
       })
       .catch(() => setErr("Couldn't load the curriculum."));
   }, []);
+
+  useEffect(() => { if (sel) save("open", sel); }, [sel]);
+  useEffect(() => { save("find", find); }, [find]);
 
   const entry = useMemo(
     () => (entries || []).find((e) => e.id === sel) || null,
@@ -52,6 +64,21 @@ export default function Curriculum() {
       `${e.title} ${e.code} ${e.summary} ${e.body}`.toLowerCase().includes(q)
     );
   }, [entries, find]);
+
+  async function restore(version) {
+    if (!confirm(`Put version ${version} back in force? The current wording is kept in history.`)) return;
+    setRestoring(version);
+    const r = await fetch(`/api/entries/${encodeURIComponent(entry.id)}/restore`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ version }),
+    }).then((x) => x.json()).catch(() => ({ error: "Couldn't restore." }));
+    setRestoring(0);
+    if (r.error) { alert(r.error); return; }
+    const d = await fetch("/api/entries").then((x) => x.json());
+    setEntries(d.entries || []);
+    setHistory(null);
+    loadHistory();
+  }
 
   async function loadHistory() {
     setShowHistory(true);
@@ -150,6 +177,12 @@ export default function Curriculum() {
                       <b>v{h.version}</b>
                       <span>{h.note || "—"}</span>
                       <span className="when">{h.changed_by} · {when(h.changed_at)}</span>
+                      {canRestore && h.version !== entry.version && (
+                        <button className="linkish" disabled={restoring === h.version}
+                          onClick={() => restore(h.version)}>
+                          {restoring === h.version ? "restoring…" : "restore"}
+                        </button>
+                      )}
                     </div>
                   ))
                 )}

@@ -14,7 +14,7 @@ export default async function Page() {
       <Nav user={user} />
       <div className="wrap">
         <Suspense fallback={<div className="page-solo"><div className="empty"><span className="spin" /> Loading…</div></div>}>
-          <Curriculum />
+          <Curriculum canRestore={user.isBoard} />
         </Suspense>
       </div>
     </>

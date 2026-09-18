@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, migrate } from "@/lib/db";
 import curriculum from "@/data/curriculum.json";
+import { currentUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,8 +16,15 @@ export const maxDuration = 60;
 export async function GET(req) {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
-  if (!process.env.SETUP_TOKEN || token !== process.env.SETUP_TOKEN) {
-    return NextResponse.json({ error: "Bad or missing setup token." }, { status: 403 });
+  const tokenOk = !!process.env.SETUP_TOKEN && token === process.env.SETUP_TOKEN;
+  // Once SETUP_TOKEN is deleted, a signed-in Review Board member can still run
+  // this to apply later database changes. Loading entries stays skip-by-default.
+  const user = tokenOk ? null : await currentUser();
+  if (!tokenOk && !(user && user.isBoard)) {
+    return NextResponse.json(
+      { error: "Bad or missing setup token, and you are not signed in as a Review Board member." },
+      { status: 403 }
+    );
   }
   const overwrite = url.searchParams.get("overwrite") === "1";
 

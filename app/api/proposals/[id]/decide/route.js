@@ -41,7 +41,40 @@ export async function POST(req, { params }) {
     }
 
     let applied = 0;
-    if (approve && p.proposed_text && p.proposed_text.trim()) {
+    let createdId = "";
+
+    // A "new module" proposal creates its own entry, so approved additions land
+    // in the Curriculum tab as searchable entries rather than being folded into
+    // an existing one.
+    if (approve && p.kind === "new" && p.proposed_text && p.proposed_text.trim()) {
+      const code = (p.new_code || "").trim().toUpperCase();
+      const section = (p.new_section || "module").trim();
+      let id = code.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `entry-${p.id}`;
+
+      const { rows: taken } = await client.query(`SELECT id FROM entries WHERE id = $1`, [id]);
+      if (taken.length) id = `${id}-${p.id}`;
+
+      const { rows: ordRows } = await client.query(
+        `SELECT COALESCE(MAX(ord), 0) + 5 AS ord FROM entries WHERE section = $1`, [section]
+      );
+      const ord = ordRows[0]?.ord || 9999;
+
+      await client.query(
+        `INSERT INTO entries (id, code, title, summary, body, section, ord, zone, status,
+                              review_refs, source_note, version, updated_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,NULL,'approved','[]'::jsonb,$8,1,$9)`,
+        [id, code, (p.new_title || p.title).slice(0, 200), (p.new_summary || "").slice(0, 400),
+         p.proposed_text, section, ord, `Added by proposal #${p.id}`, user.email]
+      );
+      await client.query(
+        `INSERT INTO entry_versions (entry_id, version, body, status, changed_by, proposal_id, note)
+         VALUES ($1,1,$2,'approved',$3,$4,$5)
+         ON CONFLICT (entry_id, version) DO NOTHING`,
+        [id, p.proposed_text, user.email, p.id, note || ("New entry: " + (p.new_title || p.title))]
+      );
+      createdId = id;
+      applied = 1;
+    } else if (approve && p.proposed_text && p.proposed_text.trim()) {
       const { rows: er } = await client.query(
         `SELECT body, version, status FROM entries WHERE id = $1 FOR UPDATE`, [p.entry_id]
       );
@@ -79,13 +112,13 @@ export async function POST(req, { params }) {
     await client.query(
       `UPDATE proposals
          SET status = $1, decided_by = $2, decided_at = now(),
-             decision_note = $3, applied_version = $4
-       WHERE id = $5`,
-      [approve ? "approved" : "declined", user.email, note, applied, p.id]
+             decision_note = $3, applied_version = $4, created_entry_id = $5
+       WHERE id = $6`,
+      [approve ? "approved" : "declined", user.email, note, applied, createdId, p.id]
     );
 
     await client.query("COMMIT");
-    return NextResponse.json({ ok: true, appliedVersion: applied });
+    return NextResponse.json({ ok: true, appliedVersion: applied, createdEntryId: createdId });
   } catch (e) {
     await client.query("ROLLBACK").catch(() => {});
     return NextResponse.json({ error: String(e.message || e) }, { status: 500 });

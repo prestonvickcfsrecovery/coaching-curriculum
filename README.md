@@ -100,6 +100,20 @@ see the approve and decline buttons.
 
 ---
 
+## Proposing a brand-new module
+
+A proposal can either **change an existing entry** or **add a new one**. Pick the type at the
+top of the form: choosing "New module or entry" greys out the entry selector and asks for a
+section, a code (the next free one is suggested, e.g. M-19), a title, and a one-line summary.
+On approval it becomes its own entry in the Curriculum tab, searchable, with its own history.
+
+The wording box has **Preview** (shows exactly how it will render) and **Tidy up formatting**
+(rewrites a pasted draft into the house format without changing wording). Review Board members
+can also **restore** an earlier version from any entry's History.
+
+After deploying this update, visit `/api/setup` once while signed in as a Review Board member
+to add the new database columns. No token needed.
+
 ## How it works
 
 **Curriculum** — every entry with its status, version, and review-item tags. Version history
