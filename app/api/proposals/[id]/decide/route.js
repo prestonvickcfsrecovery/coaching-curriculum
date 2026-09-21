@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, migrate } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -22,6 +22,13 @@ export async function POST(req, { params }) {
   const b = await req.json().catch(() => ({}));
   const approve = b.approve === true;
   const note = (b.note || "").trim().slice(0, 2000);
+
+  // same guard as the submit path: an older database gets migrated in place
+  try {
+    await db().query("SELECT kind, created_entry_id FROM proposals LIMIT 1");
+  } catch {
+    try { await migrate(); } catch {}
+  }
 
   const client = await db().connect();
   try {

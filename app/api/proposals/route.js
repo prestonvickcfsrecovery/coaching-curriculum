@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { q } from "@/lib/db";
+import { q, migrate } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -53,7 +53,10 @@ export async function POST(req) {
     return NextResponse.json({ error: "Choose the entry this changes." }, { status: 400 });
   }
 
-  const rows = await q(
+  // The columns for "new entry" proposals arrive with a later release. If this
+  // deployment's database predates them, apply the migration and try once more,
+  // rather than handing the coach an error they can do nothing about.
+  const insert = () => q(
     `INSERT INTO proposals (entry_id, title, type, proposed_text, rationale, urgency,
                             author_email, author_name, kind, new_code, new_title, new_summary, new_section)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
@@ -67,5 +70,26 @@ export async function POST(req) {
      isNew ? (b.newSummary || "").trim().slice(0, 400) : "",
      isNew ? b.newSection.trim().slice(0, 40) : ""]
   );
+
+  let rows;
+  try {
+    rows = await insert();
+  } catch (e) {
+    const msg = String(e.message || e);
+    if (/column .* does not exist|does not exist|null value in column "entry_id"/i.test(msg)) {
+      try {
+        await migrate();
+        rows = await insert();
+      } catch (e2) {
+        return NextResponse.json(
+          { error: "The database is missing the newer proposal fields. Visit /api/setup while signed in as a Review Board member, then try again.", detail: String(e2.message || e2).slice(0, 200) },
+          { status: 500 }
+        );
+      }
+    } else {
+      return NextResponse.json({ error: "Couldn't save the proposal.", detail: msg.slice(0, 200) }, { status: 500 });
+    }
+  }
+
   return NextResponse.json({ ok: true, id: rows[0].id });
 }

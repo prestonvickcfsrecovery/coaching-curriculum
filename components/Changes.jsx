@@ -131,7 +131,11 @@ export default function Changes({ user }) {
     setSaving(true); setMsg("");
     const r = await fetch("/api/proposals", {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(form),
-    }).then((x) => x.json()).catch(() => ({ error: "Couldn't submit." }));
+    }).then(async (x) => {
+      // a crashed route returns HTML, not JSON - say something useful either way
+      try { return await x.json(); }
+      catch { return { error: `The server returned an error (${x.status}). If this just started, visit /api/setup while signed in to finish the update.` }; }
+    }).catch(() => ({ error: "Couldn't reach the server. Check your connection and try again." }));
     setSaving(false);
     if (r.error) { setMsg(r.error); return; }
     setForm((f) => ({ ...f, title: "", proposedText: "", rationale: "", newTitle: "", newSummary: "", newCode: "" }));
